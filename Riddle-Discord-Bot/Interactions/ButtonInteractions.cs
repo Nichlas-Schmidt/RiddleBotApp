@@ -10,28 +10,32 @@ using Remora.Rest.Core;
 using Remora.Discord.Commands.Attributes;
 using Remora.Discord.Commands.Feedback.Messages;
 using Remora.Discord.Commands.Feedback.Services;
+using System.Drawing;
+using Microsoft.Extensions.Options;
 
 namespace Riddle_Discord_Bot.Interactions;
 
-public class ModalInteractions : InteractionGroup
+public class ButtonInteractions : InteractionGroup
 {
-    private readonly ILogger<ModalInteractions> _log;
+    private readonly ILogger<ButtonInteractions> _log;
     private readonly ICommandContext _context;
     private readonly IDiscordRestChannelAPI _channelAPI;
     private readonly IDiscordRestInteractionAPI _interactionAPI;
     private readonly FeedbackService _feedbackService;
+    private readonly IRiddleGame _game;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ModalInteractions"/> class.
+    /// Initializes a new instance of the <see cref="ButtonInteractions"/> class.
     /// </summary>
     /// <param name="log">The logging instance for this type.</param>
-    public ModalInteractions(ILogger<ModalInteractions> log, ICommandContext context, IDiscordRestChannelAPI channelAPI, IDiscordRestInteractionAPI interactionAPI, FeedbackService feedbackService)
+    public ButtonInteractions(ILogger<ButtonInteractions> log, ICommandContext context, IDiscordRestChannelAPI channelAPI, IDiscordRestInteractionAPI interactionAPI, FeedbackService feedbackService, IRiddleGame game)
     {
         _log = log;
         _context = context;
         _channelAPI = channelAPI;
         _interactionAPI = interactionAPI;
         _feedbackService = feedbackService;
+        _game = game;
     }
 
     /// <summary>
@@ -40,12 +44,34 @@ public class ModalInteractions : InteractionGroup
     /// <param name="guessText">The value of the modal text input component.</param>
     /// <returns>A result which may or may not have succeeded.</returns>
     [Modal("guessModal")]
-    public Task<Result> OnModalSubmitAsync(string guessText)
+    public async Task<Result> OnModalSubmitAsync(string guessText)
     {
         _log.LogInformation("Received modal response");
         _log.LogInformation("Received input: {Input}", guessText);
-        _channelAPI.CreateMessageAsync(_context.ChannelID, $"{_context.User.Username} guessed {guessText}");
-        return Task.FromResult(Result.FromSuccess());
+        if (_game.Guess(guessText))
+        {
+
+            await _channelAPI.CreateMessageAsync(_context.ChannelID, $"User {_context.User.Username} has guessed CORRECT with guess: {guessText}");
+            _game.NextRiddle();
+            // Logic for sending next riddle.
+            var option = new FeedbackMessageOptions(MessageComponents: new IMessageComponent[]
+            {
+                new ActionRowComponent(new[]
+                {
+                    new ButtonComponent(Style:ButtonComponentStyle.Primary, "Guess", CustomID:CustomIDHelpers.CreateButtonID("submit-guess"))
+                })
+            });
+
+
+            var embed = new Embed(Description: _game.RiddleText ?? "No more riddles remaining.", Colour: Color.LawnGreen);
+            return (Result)await _channelAPI.CreateMessageAsync(channelID: _context.ChannelID, embeds: new[] { embed }, components:option.MessageComponents);
+            //_channelAPI.CreateMessageAsync()
+        }
+        else
+        {
+            await _channelAPI.CreateMessageAsync(_context.ChannelID, $"User {_context.User.Username} has guessed WRONG with guess: {guessText}");
+        }
+        return await Task.FromResult(Result.FromSuccess());
     }
 
 
@@ -54,6 +80,7 @@ public class ModalInteractions : InteractionGroup
     public async Task<Result> OnButtonPressedAsync()
     {
         _log.LogInformation("Button pressed");
+
         if (_context is not InteractionContext interactionContext)
         {
             return (Result)await _feedbackService.SendContextualWarningAsync
@@ -107,4 +134,5 @@ public class ModalInteractions : InteractionGroup
 
         return result;
     }
+
 }

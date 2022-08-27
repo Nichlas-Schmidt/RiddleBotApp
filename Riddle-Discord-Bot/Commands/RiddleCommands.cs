@@ -45,15 +45,75 @@ namespace Riddle_Discord_Bot.Commands
         public async Task<IResult> StartGame()
         {
             _game.StartGame();
-            var fb_options = new FeedbackMessageOptions(MessageComponents: new IMessageComponent[]
+            var options = new FeedbackMessageOptions(MessageComponents: new IMessageComponent[]
             {
                 new ActionRowComponent(new[]
                 {
                     new ButtonComponent(Style:ButtonComponentStyle.Primary, "Guess", CustomID:CustomIDHelpers.CreateButtonID("submit-guess"))
                 })
             });
-            FeedbackMessage msg = new FeedbackMessage(_game.RiddleText ?? "No more riddles", Colour: Color.AliceBlue);
-            return (Result)await _feedback.SendContextualMessageAsync(msg,ct: this.CancellationToken, options:fb_options);
+
+
+            return (Result)await _feedback.SendContextualMessageAsync(new FeedbackMessage(_game.RiddleText ?? "No riddle", Colour:Color.Brown),null,options);
+        }
+
+
+        [Command("modal")]
+        [SuppressInteractionResponse(true)]
+        public async Task<Result> ShowModalAsync()
+        {
+            if (_context is not InteractionContext interactionContext)
+            {
+                return (Result)await _feedback.SendContextualWarningAsync
+                (
+                    "This command can only be used with slash commands.",
+                    _context.User.ID,
+                    new FeedbackMessageOptions(MessageFlags: MessageFlags.Ephemeral)
+                );
+            }
+
+            var response = new InteractionResponse
+            (
+                InteractionCallbackType.Modal,
+                new
+                (
+                    new InteractionModalCallbackData
+                    (
+                        CustomIDHelpers.CreateModalID("guessmodal"),
+                        "Test Modal",
+                        new[]
+                        {
+                        new ActionRowComponent
+                        (
+                            new[]
+                            {
+                                new TextInputComponent
+                                (
+                                    "modal-text-input",
+                                    TextInputStyle.Short,
+                                    "Short Text",
+                                    1,
+                                    32,
+                                    true,
+                                    string.Empty,
+                                    "Short Text here"
+                                )
+                            }
+                        )
+                        }
+                    )
+                )
+            );
+
+            var result = await _interactionAPI.CreateInteractionResponseAsync
+            (
+                interactionContext.ID,
+                interactionContext.Token,
+                response,
+                ct: this.CancellationToken
+            );
+
+            return result;
         }
     }
 }

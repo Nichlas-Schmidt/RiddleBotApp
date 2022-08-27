@@ -25,15 +25,15 @@ internal class Program
     public static async Task Main(string[] args)
     {
         var host = CreateHostBuilder(args)
-            .UseConsoleLifetime()
-            .Build();
+        .UseConsoleLifetime()
+        .Build();
+
         var services = host.Services;
         var log = services.GetRequiredService<ILogger<Program>>();
         var configuration = services.GetRequiredService<IConfiguration>();
         var slashService = services.GetRequiredService<SlashService>();
         var checkSlashSupport = slashService.SupportsSlashCommands();
         var updateSlash = await slashService.UpdateSlashCommandsAsync();
-
         await host.RunAsync();
     }
 
@@ -60,8 +60,9 @@ internal class Program
             .AddCommandTree()
                 .WithCommandGroup<RiddleCommands>()
                 .Finish()
-            .AddInteractionGroup<ModalInteractions>()
-            .AddResponder<PingPongResponder>();
+            .AddInteractivity()
+            .AddInteractionGroup<ButtonInteractions>();
+            
         })
         .ConfigureLogging(
         c => c
