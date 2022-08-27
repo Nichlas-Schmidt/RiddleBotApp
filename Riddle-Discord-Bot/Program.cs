@@ -1,5 +1,4 @@
-﻿
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,12 +10,12 @@ using Remora.Discord.Gateway;
 using Remora.Discord.Gateway.Extensions;
 using Remora.Discord.Interactivity.Extensions;
 using Remora.Discord.Hosting.Extensions;
+using Riddle_Discord_Bot.Commands;
+using Riddle_Discord_Bot.Interactions;
 using Remora.Discord.Pagination.Extensions;
 using Remora.Discord.API.Objects;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.Interactivity;
-using Riddle_Discord_Bot.Commands;
-using Riddle_Discord_Bot.Interactions;
 
 namespace Riddle_Discord_Bot;
 
@@ -61,7 +60,8 @@ internal class Program
             .AddCommandTree()
                 .WithCommandGroup<RiddleCommands>()
                 .Finish()
-            .AddInteractionGroup<ButtonInteractions>();
+            .AddInteractionGroup<ModalInteractions>()
+            .AddResponder<PingPongResponder>();
         })
         .ConfigureLogging(
         c => c

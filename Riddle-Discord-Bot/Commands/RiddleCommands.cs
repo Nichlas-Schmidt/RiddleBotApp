@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 using Riddle_Discord_Bot.Interactions;
 using Microsoft.Extensions.Options;
 using Remora.Discord.API.Abstractions.Gateway.Events;
+using Remora.Rest.Core;
 
 namespace Riddle_Discord_Bot.Commands
 {
@@ -51,7 +52,7 @@ namespace Riddle_Discord_Bot.Commands
                     new ButtonComponent(Style:ButtonComponentStyle.Primary, "Guess", CustomID:CustomIDHelpers.CreateButtonID("submit-guess"))
                 })
             });
-            FeedbackMessage msg = new FeedbackMessage(_game.RiddleText ?? "No active riddle",Color.Yellow);
+            FeedbackMessage msg = new FeedbackMessage(_game.RiddleText ?? "No more riddles", Colour: Color.AliceBlue);
             return (Result)await _feedback.SendContextualMessageAsync(msg,ct: this.CancellationToken, options:fb_options);
         }
     }
