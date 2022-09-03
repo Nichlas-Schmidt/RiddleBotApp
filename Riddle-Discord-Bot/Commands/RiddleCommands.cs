@@ -20,23 +20,19 @@ using Riddle_Discord_Bot.Interactions;
 using Microsoft.Extensions.Options;
 using Remora.Discord.API.Abstractions.Gateway.Events;
 using Remora.Rest.Core;
+using Remora.Discord.Extensions.Formatting;
+using Humanizer;
 
 namespace Riddle_Discord_Bot.Commands
 {
     internal class RiddleCommands : CommandGroup
     {
         private readonly FeedbackService _feedback;
-        private readonly ICommandContext _context;
-        private readonly IDiscordRestInteractionAPI _interactionAPI;
-        private readonly IDiscordRestChannelAPI _channelAPI;
         private readonly IRiddleGame _game;
 
-        public RiddleCommands(FeedbackService feedback, ICommandContext context, IDiscordRestInteractionAPI interactionAPI, IDiscordRestChannelAPI channelAPI, IRiddleGame game)
+        public RiddleCommands(FeedbackService feedback, IRiddleGame game)
         {
             _feedback = feedback;
-            _context = context;
-            _interactionAPI = interactionAPI;
-            _channelAPI = channelAPI;
             _game = game;
         }
 
@@ -44,76 +40,87 @@ namespace Riddle_Discord_Bot.Commands
         [Description("Starts the riddle game")]
         public async Task<IResult> StartGame()
         {
-            _game.StartGame();
-            var options = new FeedbackMessageOptions(MessageComponents: new IMessageComponent[]
+            bool more_riddles = _game.StartGame();
+            var button_options = new FeedbackMessageOptions(MessageComponents: new IMessageComponent[]
             {
                 new ActionRowComponent(new[]
                 {
-                    new ButtonComponent(Style:ButtonComponentStyle.Primary, "Guess", CustomID:CustomIDHelpers.CreateButtonID("submit-guess"))
+                    new ButtonComponent(Style:ButtonComponentStyle.Primary, "Submit a guess", CustomID:CustomIDHelpers.CreateButtonID("submit-guess"))
                 })
             });
 
+            if (more_riddles)
+            {
+                return (Result)await _feedback.SendContextualEmbedAsync(new Embed(Title: "Riddle", Description: _game.ActiveRiddle?.Text ?? "Error getting text"), options: button_options);
 
-            return (Result)await _feedback.SendContextualMessageAsync(new FeedbackMessage(_game.RiddleText ?? "No riddle", Colour:Color.Brown),null,options);
+            }
+            return (Result)await _feedback.SendContextualMessageAsync(new FeedbackMessage("No more remaining riddles.", Colour: Color.Black));
         }
 
-
-        [Command("modal")]
-        [SuppressInteractionResponse(true)]
-        public async Task<Result> ShowModalAsync()
+        [Command("NextRiddle")]
+        [Description("Starts the riddle game")]
+        public async Task<IResult> NextRiddle()
         {
-            if (_context is not InteractionContext interactionContext)
+            _game.MoveActiveToUsed();
+            bool result = _game.SetNextActive();
+            if (result)
             {
-                return (Result)await _feedback.SendContextualWarningAsync
-                (
-                    "This command can only be used with slash commands.",
-                    _context.User.ID,
-                    new FeedbackMessageOptions(MessageFlags: MessageFlags.Ephemeral)
-                );
+                var button_options = new FeedbackMessageOptions(MessageComponents: new IMessageComponent[]
+{
+                new ActionRowComponent(new[]
+                {
+                    new ButtonComponent(Style:ButtonComponentStyle.Primary, "Submit a guess", CustomID:CustomIDHelpers.CreateButtonID("submit-guess"))
+                })
+});
+
+
+                return (Result)await _feedback.SendContextualEmbedAsync( new Embed(Title: "Riddle", Description: _game.ActiveRiddle?.Text ?? "Error getting text"), options: button_options);
+
             }
+            else
+            {
+                return (Result)await _feedback.SendContextualMessageAsync(new FeedbackMessage("No more remaining riddles.", Colour: Color.Black));
+            }
+        }
 
-            var response = new InteractionResponse
-            (
-                InteractionCallbackType.Modal,
-                new
-                (
-                    new InteractionModalCallbackData
-                    (
-                        CustomIDHelpers.CreateModalID("guessmodal"),
-                        "Test Modal",
-                        new[]
-                        {
-                        new ActionRowComponent
-                        (
-                            new[]
-                            {
-                                new TextInputComponent
-                                (
-                                    "modal-text-input",
-                                    TextInputStyle.Short,
-                                    "Short Text",
-                                    1,
-                                    32,
-                                    true,
-                                    string.Empty,
-                                    "Short Text here"
-                                )
-                            }
-                        )
-                        }
-                    )
-                )
-            );
+        [Command("Stop")]
+        [Description("Stops the riddle game")]
+        public async Task<IResult> StopGame()
+        {
+            _game.StopGame();
 
-            var result = await _interactionAPI.CreateInteractionResponseAsync
-            (
-                interactionContext.ID,
-                interactionContext.Token,
-                response,
-                ct: this.CancellationToken
-            );
 
-            return result;
+            return (Result)await _feedback.SendContextualMessageAsync(new FeedbackMessage("Game stopped.", Colour: Color.Brown));
+        }
+
+        [Command("ReloadRiddles")]
+        [Description("updates remaining riddles based on riddles.json")]
+        [Ephemeral]
+        public async Task<IResult> ReloadRiddles()
+        {
+            _game.ReloadRiddles();
+            string emb_description = $"reloaded riddles from files.";
+            Embed emb = new(Description:emb_description);
+            return (Result)await _feedback.SendContextualEmbedAsync(emb);
+        }
+
+        [Command("Clearused")]
+        [Description("Clears used riddles in used_riddles.json and adds them back into the current riddle game.")]
+        [Ephemeral]
+        public async Task<IResult> ClearUsed()
+        {
+            string emb_description;
+            try
+            {
+                _game.ClearUsedRiddles();
+                emb_description = $"Cleared used riddles";
+            }
+            catch (Exception e)
+            {
+                emb_description = $"Failed to clear riddles {e.Message}";
+            }
+            Embed emb = new(Description: emb_description);
+            return (Result)await _feedback.SendContextualEmbedAsync(emb);
         }
     }
 }

@@ -34,6 +34,8 @@ internal class Program
         var slashService = services.GetRequiredService<SlashService>();
         var checkSlashSupport = slashService.SupportsSlashCommands();
         var updateSlash = await slashService.UpdateSlashCommandsAsync();
+        var riddleService = services.GetRequiredService<IRiddleGame>();
+        riddleService.Startup();
         await host.RunAsync();
     }
 
