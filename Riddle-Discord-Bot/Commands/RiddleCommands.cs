@@ -38,6 +38,7 @@ namespace Riddle_Discord_Bot.Commands
 
         [Command("Start")]
         [Description("Starts the riddle game")]
+        [DiscordDefaultMemberPermissions(DiscordPermission.Administrator)]
         public async Task<IResult> StartGame()
         {
             bool more_riddles = _game.StartGame();
@@ -59,6 +60,7 @@ namespace Riddle_Discord_Bot.Commands
 
         [Command("NextRiddle")]
         [Description("Starts the riddle game")]
+        [DiscordDefaultMemberPermissions(DiscordPermission.Administrator)]
         public async Task<IResult> NextRiddle()
         {
             _game.MoveActiveToUsed();
@@ -85,6 +87,7 @@ namespace Riddle_Discord_Bot.Commands
 
         [Command("Stop")]
         [Description("Stops the riddle game")]
+        [DiscordDefaultMemberPermissions(DiscordPermission.Administrator)]
         public async Task<IResult> StopGame()
         {
             _game.StopGame();
@@ -94,6 +97,7 @@ namespace Riddle_Discord_Bot.Commands
         }
 
         [Command("ReloadRiddles")]
+        [DiscordDefaultMemberPermissions(DiscordPermission.Administrator)]
         [Description("updates remaining riddles based on riddles.json")]
         [Ephemeral]
         public async Task<IResult> ReloadRiddles()
@@ -105,6 +109,7 @@ namespace Riddle_Discord_Bot.Commands
         }
 
         [Command("Clearused")]
+        [DiscordDefaultMemberPermissions(DiscordPermission.Administrator)]
         [Description("Clears used riddles in used_riddles.json and adds them back into the current riddle game.")]
         [Ephemeral]
         public async Task<IResult> ClearUsed()
